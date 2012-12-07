@@ -1,0 +1,111 @@
+/*
+ * Game Of life 3D
+ * 2 or less neighbours -> die
+ * 5 cells around an empty cell -> breed
+ * 7 or more neighbours: die
+ *
+ * Unbounded by a box universe
+ * Build Map of influenced location: each node output coordinates + populated
+ * For each location under influcence, decide to spawn or not based on GOL rules
+ */
+
+struct PointInfluence {
+  Boolean isPopulated;
+  UInt8 influence;
+};
+
+function Boolean PointInfluence.isSpawning() {
+	if (this.influence > 6 || this.influence < 3) return false; // over or under crowded
+	if (this.influence == 5 ) return true; // 5 or more, we spawn
+	return this.isPopulated;
+}
+
+function populateStartCube(in Size startSize, in Size spawnInterval, io Size numPoints, io Integer positions[100000][3]) {
+    Size currentPosIndex = 0;
+    Size spawnInt=1;
+    numPoints=0;
+  	for( Integer x=0; x<startSize; ++x) {
+  	  	for( Integer y=0; y<startSize; ++y) {
+  	  		for( Integer z=0; z<startSize; ++z) {
+  	  			if (currentPosIndex % spawnInt == 0 && numPoints < 100000 ) {
+  	  			    Integer position[3];
+  	  			    position[0]=x;
+  	  			    position[1]=y;
+  	  			    position[2]=z;
+  	  				positions[numPoints]=position;
+  	  				++numPoints;
+  	  				spawnInt++;
+  	  				if(spawnInt>spawnInterval) spawnInt=1;
+  	  			}
+  	  			++currentPosIndex;
+  			}
+  		}
+  	}
+ }
+
+function buildInfluenceMap(io PointInfluence influenceMap[Integer][Integer][Integer], io Size numPoints, in Integer positions[100000][3]) {
+  for (Integer i=0; i<numPoints; ++i) {
+  	PointInfluence pi = influenceMap[positions[i][0]][positions[i][1]][positions[i][2]];
+  	pi.isPopulated=true;
+  	influenceMap[positions[i][0]][positions[i][1]][positions[i][2]]=pi;
+  	for (Integer z=-1; z<2; ++z) {
+	  	for (Integer y=-1; y<2; ++y) {
+		  	for (Integer x=-1; x<2; ++x) {
+		  		if (x!=0 || y!=0 || z!=0 ) {
+		  			PointInfluence pin = influenceMap[positions[i][0]+x] [positions[i][1]+y] [positions[i][2]+z];
+		  			++pin.influence;
+		  			influenceMap[positions[i][0]+x] [positions[i][1]+y] [positions[i][2]+z]=pin;
+		  		}
+		  	}
+	  	}
+  	}
+  }
+}
+
+function spawnPoints(io Size numPoints, io Integer positions[100000][3], in PointInfluence influenceMap[Integer][Integer][Integer]) {
+	numPoints=0;
+	Size totalEval=0;
+	for (x, yzval in influenceMap) {
+		for( y, zval in yzval) {
+			for( z, val in zval ) {
+				if ( val.isSpawning() ) {
+					Integer position[3];
+					position[0]=x;
+					position[1]=y;
+					position[2]=z;
+					positions[numPoints]=position;
+					//report(numPoints + ": " + x + " " + y + " " + z);
+					++numPoints;
+					++totalEval;
+					if ( numPoints == 100000 ) {
+						report("reached limit");
+						return;
+					}
+				}
+			}
+		}
+	}
+	//report("total points under influence: " + totalEval );
+}
+
+operator GameOfLife(in Integer frame, in Size startSize, in Size spawnInterval, io Size numPoints, io Integer positions[100000][3]) {
+  if(frame == 0) {
+	populateStartCube(startSize, spawnInterval, numPoints, positions);
+  } else {
+  	report( "incoming points:" + numPoints );
+  	PointInfluence influenceMap[Integer][Integer][Integer];
+  	buildInfluenceMap(influenceMap, numPoints, positions);
+	spawnPoints(numPoints, positions, influenceMap);
+  }
+}
+
+operator entry()
+{
+   Size numPoints;
+   Integer  pos[100000][3];
+   GameOfLife(0,5,30,numPoints,pos);
+   report("spawned" + numPoints);
+   for ( Index i = 1; i <100; ++i) {
+   	 GameOfLife(i,21,4,numPoints,pos);
+   }
+}

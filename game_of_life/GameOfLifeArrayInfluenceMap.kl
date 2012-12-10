@@ -1,0 +1,148 @@
+/*
+ * Game Of life 3D
+ * 2 or less neighbours -> die
+ * 5 cells around an empty cell -> breed
+ * 7 or more neighbours: die
+ *
+ * Unbounded by a box universe
+ * Build Map of influenced location: each node output coordinates + populated
+ * For each location under influcence, decide to spawn or not based on GOL rules
+ */
+
+struct PointInfluence {
+  Boolean isPopulated;
+  UInt8 influence;
+};
+
+function Boolean PointInfluence.isSpawning() {
+	if (this.influence > 6 || this.influence < 3) return false; // over or under crowded
+	if (this.influence == 5 ) return true; // 5 or more, we spawn
+	return this.isPopulated;
+}
+
+function populateStartCube(in Size halfBoundingBox, in Size spawnInterval, io Size numPoints, io Integer positions[100000][3]) {
+    Size currentPosIndex = 0;
+    Size spawnInt=1;
+    numPoints=0;
+    Size startSize = 2*halfBoundingBox;
+  	for( Integer x=0; x<startSize; ++x) {
+  	  	for( Integer y=0; y<startSize; ++y) {
+  	  		for( Integer z=0; z<startSize; ++z) {
+  	  			if (currentPosIndex % spawnInt == 0 && numPoints < 100000 ) {
+  	  			    Integer position[3];
+  	  			    position[0]=x-halfBoundingBox;
+  	  			    position[1]=y-halfBoundingBox;
+  	  			    position[2]=z-halfBoundingBox;
+  	  				positions[numPoints]=position;
+  	  				++numPoints;
+  	  				spawnInt++;
+  	  				if(spawnInt>spawnInterval) spawnInt=1;
+  	  			}
+  	  			++currentPosIndex;
+  			}
+  		}
+  	}
+ }
+
+function Size toIndex( in Size halfBoundingBox, in Integer pos[3] ) {
+	return toIndex( halfBoundingBox, pos[0], pos[1], pos[2] );
+}
+
+function Size toIndex( in Size halfBoundingBox, in Integer x, in Integer y, in Integer z) {
+	Size boundingBox = halfBoundingBox * 2;
+	Size index = ( ( x + halfBoundingBox ) * boundingBox * boundingBox + ( y + halfBoundingBox ) * boundingBox + z + halfBoundingBox );
+	//if ( index > ((8*halfBoundingBox*halfBoundingBox*halfBoundingBox)-1) ) report( "overflow for " + x + " " + y + " " + z + " with bound " + halfBoundingBox);
+	return index;
+}
+
+function Integer[3] toPosition( in Size halfBoundingBox, in Size index ) {
+	Integer position[3];
+	Size boundingBox = halfBoundingBox * 2;
+	position[0] = index / (boundingBox * boundingBox) - halfBoundingBox;
+	position[1] = ( index % (boundingBox * boundingBox) ) / boundingBox  - halfBoundingBox;
+    position[2] = ( index % (boundingBox * boundingBox) ) % boundingBox  - halfBoundingBox;	
+	return position;
+}
+
+function buildInfluenceMap(io PointInfluence influenceMap[], in Size halfBoundingBox, io Size numPoints, in Integer positions[100000][3]) {
+  for (Integer i=0; i<numPoints; ++i) {
+  	influenceMap[toIndex(halfBoundingBox, positions[i][0], positions[i][1], positions[i][2]) ].isPopulated=true;
+  	for (Integer z=-1; z<2; ++z) {
+	  	for (Integer y=-1; y<2; ++y) {
+		  	for (Integer x=-1; x<2; ++x) {
+		  		if (x!=0 || y!=0 || z!=0 ) {
+		  			influenceMap[toIndex(halfBoundingBox, positions[i][0]+x, positions[i][1]+y, positions[i][2]+z) ].influence++;
+		  		}
+		  	}
+	  	}
+  	}
+  }
+}
+
+function spawnPoints(io Size numPoints, io Integer positions[100000][3], io Size halfBoundingBox, in PointInfluence influenceMap[]) {
+	numPoints=0;
+	Size totalEval=0;
+	Size origHalfBoundingBox = halfBoundingBox;
+	
+	halfBoundingBox = 0;
+	for (Size i=0; i<8*origHalfBoundingBox*origHalfBoundingBox*origHalfBoundingBox;++i)
+	{
+		if (influenceMap[i].isSpawning()) {
+			Integer position[3] = toPosition( origHalfBoundingBox, i);
+			for ( Size u=0; u<3; ++u ) {
+				if ( (position[u]+1)>halfBoundingBox ) {
+					halfBoundingBox = position[u]+1;
+				}
+				else if ( (-position[u]>halfBoundingBox) ) {
+					halfBoundingBox = -position[u];
+				}
+			}
+			positions[numPoints] = position;
+		 	++numPoints;
+		 	if (numPoints == 100000 ) {
+		 		report("max points reached");
+		 		return;
+		 	}
+		}
+	}
+}
+
+operator GameOfLife(in Integer frame, in Size spawnInterval, io Size halfBoundingBox, io Size numPoints, io Integer positions[100000][3]) {
+  if(frame == 0) {
+	populateStartCube(halfBoundingBox, spawnInterval, numPoints, positions);
+  } else {
+  	++halfBoundingBox;
+  	Size size = 8 * halfBoundingBox * halfBoundingBox * halfBoundingBox;
+  	PointInfluence influenceMap[];
+  	influenceMap.resize(size);
+  	buildInfluenceMap(influenceMap, halfBoundingBox, numPoints, positions);
+	spawnPoints(numPoints, positions, halfBoundingBox,influenceMap);
+  }
+
+}
+
+operator entry() {
+	Integer orig[3];
+	Size origIndex = toIndex(300, orig);
+	report( "origin:" + origIndex );
+	Integer testPos[3] = toPosition(300, origIndex);
+	report( "should be origin: " + testPos );
+	testPos = toPosition(300, 0);
+	report( "0 index should be -300, -300, -300:" + testPos );
+	testPos = toPosition(300, 300*300*300*8-1);
+	report( "max index should be +299, +299, +299:" + testPos );
+	Size index = toIndex(300, testPos);
+	report("should be 12345: "+index);
+
+	
+	Size numPoints;
+    Size halfBoundingBox = 3;
+    Integer  positions[100000][3];
+	GameOfLife(0,10,halfBoundingBox,numPoints,positions);
+
+    report("spawned" + numPoints);
+    for ( Index i = 1; i <200; ++i) {
+        GameOfLife(i,10,halfBoundingBox,numPoints,positions);
+   	    report( "halfBoundingBox:" + halfBoundingBox + " numPoints:" + numPoints);
+    }
+}

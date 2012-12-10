@@ -92,20 +92,22 @@ operator GameOfLife(in Integer frame, in Size startSize, in Size spawnInterval, 
   if(frame == 0) {
 	populateStartCube(startSize, spawnInterval, numPoints, positions);
   } else {
-  	report( "incoming points:" + numPoints );
+  	//report( "incoming points:" + numPoints );
   	PointInfluence influenceMap[Integer][Integer][Integer];
   	buildInfluenceMap(influenceMap, numPoints, positions);
 	spawnPoints(numPoints, positions, influenceMap);
   }
+
 }
 
 operator entry()
 {
    Size numPoints;
    Integer  pos[100000][3];
-   GameOfLife(0,5,30,numPoints,pos);
+   GameOfLife(0,6,10,numPoints,pos);
    report("spawned" + numPoints);
-   for ( Index i = 1; i <100; ++i) {
-   	 GameOfLife(i,21,4,numPoints,pos);
+   for ( Index i = 1; i <10; ++i) {
+   	 GameOfLife(i,6,10,numPoints,pos);
+   	 report( "num points:" + numPoints );
    }
 }

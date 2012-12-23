@@ -107,8 +107,8 @@ function spawnPoints(io Size numPoints, io Integer positions[100000][3], io Size
 	}
 }
 
-operator GameOfLife(in Integer frame, in Size spawnInterval, io Size halfBoundingBox, io Size numPoints, io Integer positions[100000][3]) {
-  if(frame == 0) {
+operator GameOfLife(in Float32 time, in Size spawnInterval, io Size halfBoundingBox, io Size numPoints, io Integer positions[100000][3]) {
+  if(time == 0) {
 	populateStartCube(halfBoundingBox, spawnInterval, numPoints, positions);
   } else {
   	++halfBoundingBox;
@@ -118,7 +118,7 @@ operator GameOfLife(in Integer frame, in Size spawnInterval, io Size halfBoundin
   	buildInfluenceMap(influenceMap, halfBoundingBox, numPoints, positions);
 	spawnPoints(numPoints, positions, halfBoundingBox,influenceMap);
   }
-
+  report("GOL iteration: " + numPoints + " points");
 }
 
 operator entry() {

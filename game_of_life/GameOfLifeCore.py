@@ -3,6 +3,7 @@ Created on 2012-12-02
 
 @author: Claude Vervoort
 '''
+# Older version using a dictionary
 
 import FabricEngine.Core
 

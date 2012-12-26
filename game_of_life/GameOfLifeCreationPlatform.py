@@ -30,6 +30,23 @@ class GameOfLife(SceneGraphNode):
 						 'self.numPoints',
 						 'self.positions'
 						])
+		if ( options.get('debug', False) == True ):
+			dgNode.addMember( 'scale', 'Vec3', options.get('scale', Vec3(0.5,0.5,0.5)) );
+			dgNode.addMember( 'debugGeometry', 'InlineGeometryType');
+			self.bindDGOperator(dgNode.bindings,
+							name = 'GOLVisualDebug',
+							fileName = FabricEngine.CreationPlatform.buildAbsolutePath('GOLInlineGeoDebug.kl'),
+							layout =[
+							 'self.positions',
+							 'self.numPoints',
+							 'self.scale',
+							 'self.debugGeometry'
+							])
+			self.constructSubNode(InlineGeometryInstance,
+				source=self,
+				sourceDGNodeName='DGNode',
+				sourceMemberName='debugGeometry'
+			)		
 		
 
 		
@@ -40,8 +57,10 @@ class GameOfLife(SceneGraphNode):
 class GridCoordToTransform(Transform):
 	def __init__(self, scene, gol, scale, **options):
 		super(GridCoordToTransform, self).__init__(scene, **options)
+		paramsDGNode = self.constructDGNode('Params') # unsliced node to feed into the sliced OP
+		paramsDGNode.addMember('scale', 'Vec3', scale) 
 		dgNode = self.getDGNode()
-		dgNode.addMember('scale', 'Vec3', scale) #unused now, seems this approach does not work with the sliced mode used here
+		dgNode.setDependency('params', paramsDGNode );
 		#dgNode.addMember('globalXfo', 'Xfo') already defined by the DG Node created in Base Transform
 		def __onChangeGOLCallback(data):
 			golCPNode = data['node']
@@ -54,6 +73,7 @@ class GridCoordToTransform(Transform):
 						layout =[
 						 'gol.positions',
 						 'gol.numPoints',
+						 'params.scale',
 						 'self',
 						 'self.globalXfo<>'
 						], index=0)
@@ -71,12 +91,12 @@ class GameOfLifeCreationPlatform(CreationPlatformApplication):
 	    )
 		self.setWindowTitle("Creation Platform Game Of Life")
 		self.resize(1000,600)
-		
+		scale = Vec3(0.5,0.5,0.5)
 		scene = self.getScene()
 		
-		golNode = GameOfLife(scene, self.getGlobalTimeNode())
+		golNode = GameOfLife(scene, self.getGlobalTimeNode(), debug=True, scale = scale)
 		
-		scale = Vec3(0.5,0.5,0.5)
+		
 		
 		gridToXfoNode = GridCoordToTransform( scene, golNode, scale)
 		

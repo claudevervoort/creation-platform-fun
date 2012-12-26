@@ -1,0 +1,11 @@
+// Pass Through used for Visual Debugging of GOL output
+
+use InlineGeometryType;
+use Vec3;
+
+operator GOLVisualDebug(in Integer positions[100000][3], in Size numPoints, in Vec3 scale, io InlineGeometryType debugGeometry) {
+  debugGeometry.reset();
+  for ( Index i = 0; i < numPoints; ++i) {
+    debugGeometry.drawPoint(Vec3(Scalar(positions[i][0])*scale.x, Scalar(positions[i][1])*scale.y, Scalar(positions[i][2])*scale.z), Color(1.0,0.0,0.0,1.0));
+  }
+}

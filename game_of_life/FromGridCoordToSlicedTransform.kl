@@ -2,13 +2,13 @@ use Xfo;
 use Vec3;
 use Container;
 
-operator fromGridCoordToSlicedTransform(in Integer coords[100000][3], in Size numPoints, io Container selfContainer, io Xfo globalXfos<>) {
+operator fromGridCoordToSlicedTransform(in Integer coords[100000][3], in Size numPoints, Vec3 scale, io Container selfContainer, io Xfo globalXfos<>) {
 	selfContainer.resize(numPoints);
-	Vec3 scale = Vec3(0.5,0.5,0.5);
 	for(Integer i=0; i<numPoints; i++) {
 		Vec3 position = Vec3(scale.x * coords[i][0], scale.y * coords[i][1], scale.z * coords[i][2]);
         globalXfos[i].tr = position;
         globalXfos[i].sc = scale;
+        globalXfos[i].ori = Quat();
     }
     report("transformed " + numPoints + " into transform");
 }
@@ -22,5 +22,5 @@ operator entry() {
 	Xfo xfos<>;
 	Container container;
 	Size numPoints=1;
-	fromGridCoordToSlicedTransform(positions, numPoints, container, xfos);
+	fromGridCoordToSlicedTransform(positions, numPoints, scale, container, xfos);
 }

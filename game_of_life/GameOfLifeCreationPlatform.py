@@ -76,7 +76,7 @@ class GridCoordToTransform(Transform):
 						 'params.scale',
 						 'self',
 						 'self.globalXfo<>'
-						], index=0)
+						])
 
 
 class GameOfLifeCreationPlatform(CreationPlatformApplication):
@@ -94,7 +94,7 @@ class GameOfLifeCreationPlatform(CreationPlatformApplication):
 		scale = Vec3(0.5,0.5,0.5)
 		scene = self.getScene()
 		
-		golNode = GameOfLife(scene, self.getGlobalTimeNode(), debug=True, scale = scale)
+		golNode = GameOfLife(scene, self.getGlobalTimeNode(), debug=False, scale = scale)
 		
 		
 		

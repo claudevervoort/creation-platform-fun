@@ -16,7 +16,7 @@ struct PointInfluence {
 
 function Boolean PointInfluence.isSpawning() {
 	if (this.influence > 6 || this.influence < 3) return false; // over or under crowded
-	if (this.influence == 5 ) return true; // 5 or more, we spawn
+	if (this.influence == 5 ) return true; // 5 we spawn
 	return this.isPopulated;
 }
 
@@ -107,10 +107,10 @@ function spawnPoints(io Size numPoints, io Integer positions[100000][3], io Size
 	}
 }
 
-operator GameOfLife(in Float32 time, in Size spawnInterval, io Size halfBoundingBox, io Size numPoints, io Integer positions[100000][3]) {
+operator GameOfLife(in Float32 time, in Size spawnInterval, in Integer step, io Size halfBoundingBox, io Size numPoints, io Integer positions[100000][3]) {
   if(time == 0) {
 	populateStartCube(halfBoundingBox, spawnInterval, numPoints, positions);
-  } else {
+  } else if ( time % step == 0 ) {
   	++halfBoundingBox;
   	Size size = 8 * halfBoundingBox * halfBoundingBox * halfBoundingBox;
   	PointInfluence influenceMap[];
@@ -118,7 +118,7 @@ operator GameOfLife(in Float32 time, in Size spawnInterval, io Size halfBounding
   	buildInfluenceMap(influenceMap, halfBoundingBox, numPoints, positions);
 	spawnPoints(numPoints, positions, halfBoundingBox,influenceMap);
   }
-  report("GOL iteration: " + numPoints + " points");
+  #report("GOL iteration: " + numPoints + " points");
 }
 
 operator entry() {
@@ -138,11 +138,11 @@ operator entry() {
 	Size numPoints;
     Size halfBoundingBox = 3;
     Integer  positions[100000][3];
-	GameOfLife(0,10,halfBoundingBox,numPoints,positions);
+	GameOfLife(0,10,24,halfBoundingBox,numPoints,positions);
 
     report("spawned" + numPoints);
     for ( Index i = 1; i <200; ++i) {
-        GameOfLife(i,10,halfBoundingBox,numPoints,positions);
+        GameOfLife(i,10,24,halfBoundingBox,numPoints,positions);
    	    report( "halfBoundingBox:" + halfBoundingBox + " numPoints:" + numPoints);
     }
 }

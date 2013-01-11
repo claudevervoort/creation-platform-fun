@@ -15,6 +15,7 @@ class GameOfLife(SceneGraphNode):
 		dgNode.addMember('spawnInterval', 'Size', 10)
 		dgNode.addMember('numPoints', 'Size')
 		dgNode.addMember('positions', 'Integer[100000][3]')
+		dgNode.addMember( 'step', 'Integer', 2 ); #update every 2 seconds
 		def __onChangeTimeCallback(data):
 			timeController = data['node']
 			self.getDGNode().setDependency( timeController.getDGNode(), 'time')
@@ -26,13 +27,14 @@ class GameOfLife(SceneGraphNode):
 						layout =[
 						 'time.time',
 						 'self.spawnInterval',
+						 'self.step',
 						 'self.halfBoundingBox',
 						 'self.numPoints',
 						 'self.positions'
 						])
 		if ( options.get('debug', False) == True ):
 			dgNode.addMember( 'scale', 'Vec3', options.get('scale', Vec3(0.5,0.5,0.5)) );
-			dgNode.addMember( 'debugGeometry', 'InlineGeometryType');
+			dgNode.addMember( 'debugGeometry', 'InlineGeometryType')
 			self.bindDGOperator(dgNode.bindings,
 							name = 'GOLVisualDebug',
 							fileName = FabricEngine.CreationPlatform.buildAbsolutePath('GOLInlineGeoDebug.kl'),
@@ -86,8 +88,8 @@ class GameOfLifeCreationPlatform(CreationPlatformApplication):
 	      setupSelection = True,
 	      setupGrid=True,
 	      setupGlobalTimeNode=True,
-	      timeRange=Vec2(0.0,10.0),
-	      fps = 5
+	      timeRange=Vec2(0.0,240.0),
+	      fps = 24
 	    )
 		self.setWindowTitle("Creation Platform Game Of Life")
 		self.resize(1000,600)

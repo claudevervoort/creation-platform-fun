@@ -1,10 +1,10 @@
 import FabricEngine.CreationPlatform
 from FabricEngine.CreationPlatform.PySide import *
-from FabricEngine.CreationPlatform.Nodes.Rendering import *
-from FabricEngine.CreationPlatform.Nodes.Lights import *
 from FabricEngine.CreationPlatform.Nodes.Kinematics.TransformImpl import Transform
 from FabricEngine.CreationPlatform.Nodes.Primitives.PolygonMeshCuboidImpl import PolygonMeshCuboid
-from FabricEngine.CreationPlatform.RT.Math import *
+from FabricEngine.CreationPlatform.Nodes.SceneGraphNodeImpl import SceneGraphNode
+from FabricEngine.CreationPlatform.Nodes.Rendering.CameraImpl import Camera
+
 
 # Could be abstracted into a based class that returns points in grid coord (integer[3])
 class GameOfLife(SceneGraphNode):
@@ -12,13 +12,20 @@ class GameOfLife(SceneGraphNode):
 		super(GameOfLife, self).__init__(scene, **options)
 		dgNode = self.constructDGNode()
 		dgNode.addMember('halfBoundingBox', 'Size', 3)
-		dgNode.addMember('spawnInterval', 'Size', 10)
+		dgNode.addMember('spawnInterval', 'Size', 7)
 		dgNode.addMember('numPoints', 'Size')
 		dgNode.addMember('positions', 'Integer[100000][3]')
-		dgNode.addMember( 'step', 'Integer', 2 ); #update every 2 seconds
+		dgNode.addMember( 'step', 'Integer', 1 ); #update every 1 second
+		self._addMemberInterface(self.getDGNode(), 'step', True)
+		dgNode.addMember( 'min', 'Size', 3 ); #Less than 3, die!
+		self._addMemberInterface(self.getDGNode(), 'min', True)
+		dgNode.addMember( 'max', 'Size', 6 ); #More than 6, die!
+		self._addMemberInterface(self.getDGNode(), 'max', True)
+		dgNode.addMember( 'spawn', 'Size', 5 ); #Spawn at 5
+		self._addMemberInterface(self.getDGNode(), 'spawn', True)
 		def __onChangeTimeCallback(data):
 			timeController = data['node']
-			self.getDGNode().setDependency( timeController.getDGNode(), 'time')
+			self.getDGNode().setDependency( 'time', timeController.getDGNode() )
 		self.addReferenceInterface(name='Time', cls=Time, isList=False, changeCallback=__onChangeTimeCallback)
 		self.setTimeNode( timeCPNode );
 		self.bindDGOperator(dgNode.bindings,
@@ -27,7 +34,7 @@ class GameOfLife(SceneGraphNode):
 						layout =[
 						 'time.time',
 						 'self.spawnInterval',
-						 'self.step',
+						 'self.step', 'self.min', 'self.max', 'self.spawn',
 						 'self.halfBoundingBox',
 						 'self.numPoints',
 						 'self.positions'
@@ -81,7 +88,59 @@ class GridCoordToTransform(Transform):
 						])
 
 
+class OrbitTransform(Component):
+	
+	def apply(self, node):
+		super(OrbitTransform, self).apply(node)
+		dgNode = node.getDGNode();
+		dgNode.addMember("radius", "Scalar", 1)
+		dgNode.addMember("speed", "Scalar", 0.5)
+		node._addMemberInterface(node.getDGNode(), 'speed', True)
+		dgNode.addMember("zoom", "Scalar", 0.8)
+		node._addMemberInterface(node.getDGNode(), 'zoom', True)
+		# add time node to CP Node
+		def __onChangeTimeCallback(data):
+			timeController = data['node']
+			node.getDGNode().setDependency( 'time', timeController.getDGNode() )
+		node.addReferenceInterface(name='Time', cls=Time, isList=False, changeCallback=__onChangeTimeCallback)
+		
+		# add GOL, ideally would be nicer to expose just a reference to Integer so that it can be driven by something else
+		# How to expose a CP outside node
+		def __onChangeGOLCallback(data):
+			gol = data['node']
+			node.getDGNode().setDependency( 'gol', gol.getDGNode() )
+		node.addReferenceInterface(name='GOL', cls=GameOfLife, isList=False, changeCallback=__onChangeGOLCallback)
+		
+		node.setTimeNode( self.timeCPNode );
+		node.setGOLNode( self.golCPNode );		
+		#dgNode.setDependency('time', self.timeCPNode.getDGNode())
+		node.bindDGOperator(dgNode.bindings, 
+							  name="orbitBoundingBox",
+							  fileName= FabricEngine.CreationPlatform.buildAbsolutePath('OrbitTransform.kl'),
+							  layout= ["time.time", "self.speed", "self.zoom", "gol.halfBoundingBox", "self.radius", "self.globalXfo"])
+
+	def __init__(self, timeCPNode, golCPNode, speed, radius):
+		super(OrbitTransform, self).__init__()
+		self.timeCPNode = timeCPNode
+		self.golCPNode = golCPNode
+	
+	# ensure that we apply this component to a Transform only
+	@staticmethod	
+	def canApplyTo(geometry):
+		return isinstance(geometry, Transform)	
+		
+		
+
 class GameOfLifeCreationPlatform(CreationPlatformApplication):
+	
+	def initOrbitingCamera(self, golNode):
+		transform = Transform(self.getScene())
+		transform.setGlobalXfo(Xfo(Vec3(-50, 10, 0),Quat(),Vec3(1.0,1.0,1.0)),0)	
+		orbitComponent = OrbitTransform(self.getGlobalTimeNode(), golNode, 0.5, 1.0)
+		transform.addComponent(orbitComponent)
+		camera = Camera(self.getScene(), transform=transform)
+		self.getViewport().setCameraNode(camera)
+		
 	def __init__(self):	  
 		super(GameOfLifeCreationPlatform, self).__init__(
 	      cameraPosition=Vec3(4, 7, 10),
@@ -106,16 +165,13 @@ class GameOfLifeCreationPlatform(CreationPlatformApplication):
 		phongMaterial = Material(scene, xmlFile='PhongMaterial')
 		phongMaterial.addPreset(name='red',diffuseColor=Color(1.0,0.0,0.0))
 		
-		#transform = Transform(scene)
-		#transform.getDGNode().setCount(2)
-		#transform.setGlobalXfo(Xfo(Vec3(-50, 10, 0),Quat(),Vec3(1.0,1.0,1.0)),0)
-		#transform.setGlobalXfo(Xfo(Vec3(-30, 0, 0),Quat(),Vec3(1.0,1.0,1.0)),1)
+		self.initOrbitingCamera(golNode);
 							
 		GeometryInstance(scene,
 	  			geometry=PolygonMeshCuboid(scene,
-										   length=1.0,
-										   width= 1.0,
-										   height=1.0
+										   length=1.9,
+										   width= 1.9,
+										   height=1.9
 	  			),
 	  			transform=gridToXfoNode,
 	  			transformIndex=-1,

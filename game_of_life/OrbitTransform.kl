@@ -1,0 +1,30 @@
+use Vec3;
+use Xfo;
+
+operator orbit(in Float32 time, in Scalar angularSpeed, in Scalar radius, io Xfo globalXfo) {
+	Vec3 translation = Vec3(radius, 0, 0);
+	Scalar angle = angularSpeed * time;
+	Quat quat = Quat();
+	Vec3 axis = Vec3(0,1,0);
+	quat.setFromAxisAndAngle(axis, angle);
+	translation = quat.rotateVector(translation);
+	quat.setFromAxisAndAngle(axis, angle+1.507963);
+	globalXfo = Xfo(translation, quat, Vec3(1,1,1));
+}
+
+operator orbitBoundingBox(in Float32 time, in Scalar angularSpeed, in Scalar scale, in Size halfBoundingBox, io Scalar radius, io Xfo globalXfo) {
+	Scalar desiredRadius = halfBoundingBox * scale;
+	Scalar delta = desiredRadius - radius;
+	radius = radius + delta * 0.05; //smoother transition as bounding box is integer, ideally should be based on elapsed time for consistent effect
+	orbit(time, angularSpeed, radius, globalXfo);
+}
+
+operator entry() {
+	Float32 time = 2.3;
+	Scalar angularSpeed = 0.3;
+	Scalar scale = 2.3;
+	Size halfBoundingBox = 3;
+	Scalar radius = 2.2;
+	Xfo xfo = Xfo();
+	orbitBoundingBox(time, angularSpeed, scale, halfBoundingBox, radius, xfo);
+}

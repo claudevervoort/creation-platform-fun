@@ -107,16 +107,20 @@ function spawnPoints(in Size min, in Size max, in Size spawn, io Size numPoints,
 	}
 }
 
-operator GameOfLife(in Float32 time, in Size spawnInterval, in Integer step, in Size min, in Size max, in Size spawn, io Size halfBoundingBox, io Size numPoints, io Integer positions[100000][3]) {
+operator GameOfLife(in Float32 time, in Size spawnInterval, in Scalar step, io Float32 lastUpdateTime, in Size min, in Size max, in Size spawn, io Size halfBoundingBox, io Size numPoints, io Integer positions[100000][3]) {
   if(time == 0) {
 	populateStartCube(halfBoundingBox, spawnInterval, numPoints, positions);
-  } else if ( time % step == 0 ) {
-  	++halfBoundingBox;
-  	Size size = 8 * halfBoundingBox * halfBoundingBox * halfBoundingBox;
-  	PointInfluence influenceMap[];
-  	influenceMap.resize(size);
-  	buildInfluenceMap(influenceMap, halfBoundingBox, numPoints, positions);
-	spawnPoints(min, max, spawn, numPoints, positions, halfBoundingBox,influenceMap);
+  } else {
+  	Scalar delta = time - lastUpdateTime;
+  	if ( delta > step ) {
+	  	++halfBoundingBox;
+	  	Size size = 8 * halfBoundingBox * halfBoundingBox * halfBoundingBox;
+	  	PointInfluence influenceMap[];
+	  	influenceMap.resize(size);
+	  	buildInfluenceMap(influenceMap, halfBoundingBox, numPoints, positions);
+		spawnPoints(min, max, spawn, numPoints, positions, halfBoundingBox,influenceMap);
+		lastUpdateTime = time;
+	}
   }
   //report("GOL iteration: " + numPoints + " points");
 }
@@ -136,15 +140,15 @@ operator entry() {
 	Size min = 3;
 	Size max = 6;
 	Size spawn = 5;
-	
+	Float32 lastUpdateTime = 0;
 	Size numPoints;
     Size halfBoundingBox = 3;
     Integer  positions[100000][3];
-	GameOfLife(0,10,24,min,max,spawn,halfBoundingBox,numPoints,positions);
+	GameOfLife(0,10,24,lastUpdateTime, min,max,spawn,halfBoundingBox,numPoints,positions);
 
     report("spawned" + numPoints);
     for ( Index i = 1; i <200; ++i) {
-        GameOfLife(i,10,24,min,max,spawn,halfBoundingBox,numPoints,positions);
+        GameOfLife(i,10,24,lastUpdateTime,min,max,spawn,halfBoundingBox,numPoints,positions);
    	    report( "halfBoundingBox:" + halfBoundingBox + " numPoints:" + numPoints);
     }
 }

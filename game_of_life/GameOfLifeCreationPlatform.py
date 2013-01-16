@@ -17,7 +17,8 @@ class GameOfLife(SceneGraphNode):
 		dgNode.addMember('spawnInterval', 'Size', 7) #for the initial spawning, 1 cube every 7 positions 
 		dgNode.addMember('numPoints', 'Size') #current number of points
 		dgNode.addMember('positions', 'Integer[100000][3]') #fix array that contains all the points coordinate -> we can have up to 100000 points
-		dgNode.addMember( 'step', 'Integer', 1 ); #update every 1 second
+		dgNode.addMember('lastUpdateTime', 'Float32', 0)
+		dgNode.addMember( 'step', 'Scalar', 1 ); #update every 1 second
 		self._addMemberInterface(self.getDGNode(), 'step', True)
 		dgNode.addMember( 'min', 'Size', 3 ); #Less than 3, die!
 		self._addMemberInterface(self.getDGNode(), 'min', True)
@@ -37,7 +38,7 @@ class GameOfLife(SceneGraphNode):
 						layout =[
 						 'time.time',
 						 'self.spawnInterval',
-						 'self.step', 'self.min', 'self.max', 'self.spawn',
+						 'self.step', 'self.lastUpdateTime', 'self.min', 'self.max', 'self.spawn',
 						 'self.halfBoundingBox',
 						 'self.numPoints',
 						 'self.positions'

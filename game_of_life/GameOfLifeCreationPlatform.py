@@ -5,16 +5,18 @@ from FabricEngine.CreationPlatform.Nodes.Primitives.PolygonMeshCuboidImpl import
 from FabricEngine.CreationPlatform.Nodes.SceneGraphNodeImpl import SceneGraphNode
 from FabricEngine.CreationPlatform.Nodes.Rendering.CameraImpl import Camera
 
+# Game Of Life in 3D in Creation Platform
+# Claude Vervoort - claude.vervoort@gmail.com
 
 # Could be abstracted into a based class that returns points in grid coord (integer[3])
 class GameOfLife(SceneGraphNode):
 	def __init__(self, scene, timeCPNode, **options):
 		super(GameOfLife, self).__init__(scene, **options)
 		dgNode = self.constructDGNode()
-		dgNode.addMember('halfBoundingBox', 'Size', 3)
-		dgNode.addMember('spawnInterval', 'Size', 7)
-		dgNode.addMember('numPoints', 'Size')
-		dgNode.addMember('positions', 'Integer[100000][3]')
+		dgNode.addMember('halfBoundingBox', 'Size', 3) #half size of the grid cube length
+		dgNode.addMember('spawnInterval', 'Size', 7) #for the initial spawning, 1 cube every 7 positions 
+		dgNode.addMember('numPoints', 'Size') #current number of points
+		dgNode.addMember('positions', 'Integer[100000][3]') #fix array that contains all the points coordinate -> we can have up to 100000 points
 		dgNode.addMember( 'step', 'Integer', 1 ); #update every 1 second
 		self._addMemberInterface(self.getDGNode(), 'step', True)
 		dgNode.addMember( 'min', 'Size', 3 ); #Less than 3, die!
@@ -23,6 +25,7 @@ class GameOfLife(SceneGraphNode):
 		self._addMemberInterface(self.getDGNode(), 'max', True)
 		dgNode.addMember( 'spawn', 'Size', 5 ); #Spawn at 5
 		self._addMemberInterface(self.getDGNode(), 'spawn', True)
+		# register a TIME input
 		def __onChangeTimeCallback(data):
 			timeController = data['node']
 			self.getDGNode().setDependency( 'time', timeController.getDGNode() )
@@ -39,6 +42,7 @@ class GameOfLife(SceneGraphNode):
 						 'self.numPoints',
 						 'self.positions'
 						])
+		# Debug was used when there were issue setting up the render, it outputs dots in place of cubes
 		if ( options.get('debug', False) == True ):
 			dgNode.addMember( 'scale', 'Vec3', options.get('scale', Vec3(0.5,0.5,0.5)) );
 			dgNode.addMember( 'debugGeometry', 'InlineGeometryType')
@@ -88,15 +92,20 @@ class GridCoordToTransform(Transform):
 						])
 
 
+# Orbiting Camera around the world origin. It scales out as the Bounding Box for the GOL Grid widens, thus
+# why it needs a dependency on GOL (and on time for the rotation).
 class OrbitTransform(Component):
 	
 	def apply(self, node):
 		super(OrbitTransform, self).apply(node)
 		dgNode = node.getDGNode();
-		dgNode.addMember("radius", "Scalar", 1)
-		dgNode.addMember("speed", "Scalar", 0.5)
+		dgNode.addMember("radius", "Scalar", 1) # How far from Origin
+		dgNode.addMember("speed", "Scalar", 0.5) # Angular Speed
+		# Make the Angular Speed available in UI
 		node._addMemberInterface(node.getDGNode(), 'speed', True)
+		# Zoom, used to translate the bounding box to an actual translation
 		dgNode.addMember("zoom", "Scalar", 0.8)
+		# Make Zoom available in UI
 		node._addMemberInterface(node.getDGNode(), 'zoom', True)
 		# add time node to CP Node
 		def __onChangeTimeCallback(data):
@@ -137,8 +146,10 @@ class GameOfLifeCreationPlatform(CreationPlatformApplication):
 		transform = Transform(self.getScene())
 		transform.setGlobalXfo(Xfo(Vec3(-50, 10, 0),Quat(),Vec3(1.0,1.0,1.0)),0)	
 		orbitComponent = OrbitTransform(self.getGlobalTimeNode(), golNode, 0.5, 1.0)
+		# OrbitCamera component is driving the GlobalXfo based on GOL bounding box and time
 		transform.addComponent(orbitComponent)
 		camera = Camera(self.getScene(), transform=transform)
+		# This Camera replaces the default Scene Camera for the viewport
 		self.getViewport().setCameraNode(camera)
 		
 	def __init__(self):	  
@@ -157,8 +168,6 @@ class GameOfLifeCreationPlatform(CreationPlatformApplication):
 		
 		golNode = GameOfLife(scene, self.getGlobalTimeNode(), debug=False, scale = scale)
 		
-		
-		
 		gridToXfoNode = GridCoordToTransform( scene, golNode, scale)
 		
 		# create the shaders
@@ -174,7 +183,7 @@ class GameOfLifeCreationPlatform(CreationPlatformApplication):
 										   height=1.9
 	  			),
 	  			transform=gridToXfoNode,
-	  			transformIndex=-1,
+	  			transformIndex=-1, # -1 means use all transform slices -> Geometry instancing, one cube geometry, many instances
 	  			material=phongMaterial,
 	  	  		materialPreset='red'
 		)

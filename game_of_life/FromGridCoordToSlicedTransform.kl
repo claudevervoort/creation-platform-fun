@@ -10,7 +10,7 @@ operator fromGridCoordToSlicedTransform(in Integer coords[100000][3], in Size nu
         globalXfos[i].sc = scale;
         globalXfos[i].ori = Quat();
     }
-    report("transformed " + numPoints + " into transform");
+    //report("transformed " + numPoints + " into transform");
 }
 
 operator entry() {
